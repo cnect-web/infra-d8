@@ -38,7 +38,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: !Ref SshAccessCidr
+
       VpcId:
         !Ref Vpc
 
@@ -54,17 +54,6 @@ Resources:
       VpcId:
         !Ref Vpc
 
-  ElastiCacheSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for ElastiCache cache cluster
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 11211
-          ToPort: 11211
-          SourceSecurityGroupId: !Ref WebSecurityGroup
-      VpcId:
-        !Ref Vpc
   EfsSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -90,7 +79,7 @@ Resources:
           ToPort: 80
           CidrIp: 0.0.0.0/0
       VpcId:
-        !Ref Vpc       
+        !Ref Vpc
 
   WebSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -108,7 +97,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          SourceSecurityGroupId: !Ref BastionSecurityGroup
+          CidrIp: !Ref SshAccessCidr
       VpcId:
         !Ref Vpc
 

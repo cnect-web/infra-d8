@@ -46,7 +46,7 @@ Metadata:
       DatabaseClusterEndpointAddress:
         default: DB Cluster Endpoint Address
       DatabaseMasterUsername:
-        default: DB Master Username  
+        default: DB Master Username
       DatabaseMasterPassword:
         default: DB Master Password
       DatabaseName:
@@ -181,7 +181,7 @@ Parameters:
     Type: AWS::EC2::Subnet::Id
   WebSubnet1:
     Description: Select an existing web subnet for AZ 1.
-    Type: AWS::EC2::Subnet::Id 
+    Type: AWS::EC2::Subnet::Id
   WebSubnet2:
     Description: Select an existing web subnet for AZ 2.
     Type: AWS::EC2::Subnet::Id
@@ -191,7 +191,7 @@ Parameters:
     Type: String
   AdminPassword:
     AllowedPattern: ^([a-zA-Z0-9`~!#$%^&*()_+,\\-])*$
-    ConstraintDescription: Must be letters (upper or lower), numbers, and these special characters '_'`~!#$%^&*()_+,-   
+    ConstraintDescription: Must be letters (upper or lower), numbers, and these special characters '_'`~!#$%^&*()_+,-
     Description: The Drupal admin password.
     Type: String
     NoEcho: true
@@ -331,12 +331,8 @@ Resources:
         configSets:
           deploy_webserver:
             - install_webserver
-            - build_cacheclient
             - build_drupal
-            - build_opcache
-            - install_cacheclient
             - install_drupal
-            - install_opcache
             - start_webserver
         install_webserver:
           packages:
@@ -353,7 +349,7 @@ Resources:
                 !Join [
                   "",[
                     "#!/bin/bash -xe\n",
-                    "if [ ! -f /etc/httpd/conf.d/", !Ref Directory, ".conf ]; then\n",                    
+                    "if [ ! -f /etc/httpd/conf.d/", !Ref Directory, ".conf ]; then\n",
                     "   touch /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
                     "   echo 'ServerName 127.0.0.1:80' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
                     "   echo 'DocumentRoot /var/www/drupal/", !Ref Directory, "' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
@@ -373,49 +369,6 @@ Resources:
               command: ./create_site_conf.sh
               cwd: /tmp
               ignoreErrors: false
-        build_cacheclient:
-          packages:
-            yum:
-              gcc-c++: []  
-          files:
-            /tmp/install_cacheclient.sh:
-              content:
-                !Sub |
-                  #!/bin/bash -xe
-                  aws s3 cp 's3://aws-refarch/drupal/latest/bits/AmazonElastiCacheClusterClient-2.0.1-PHP70-64bit.tar.gz' /tmp/.
-                  tar -xf '/tmp/AmazonElastiCacheClusterClient-2.0.1-PHP70-64bit.tar.gz'
-                  cp '/tmp/artifact/amazon-elasticache-cluster-client.so' /usr/lib64/php/7.0/modules/
-                  if [ ! -f /etc/php-7.0.d/50-memcached.ini ]; then
-                      touch /etc/php-7.0.d/50-memcached.ini
-                  fi
-                  sed -i '3i extension=/usr/lib64/php/7.0/modules/amazon-elasticache-cluster-client.so;' /etc/php-7.0.d/50-memcached.ini
-                  sed -i '3i extension=igbinary.so;' /etc/php-7.0.d/50-memcached.ini
-              mode: 000500
-              owner: root
-              group: root
-        build_opcache:
-          packages:
-            yum:
-              php70-opcache: []
-          files:
-            /tmp/install_opcache.sh:
-              content:
-                !Sub |
-                  #!/bin/bash -xe
-                  # create hidden opcache directory locally & change owner to apache
-                  if [ ! -d /var/www/.opcache ]; then                    
-                      mkdir -p /var/www/.opcache
-                  fi
-                  # enable opcache in /etc/php-7.0.d/10-opcache.ini
-                  sed -i 's/;opcache.file_cache=.*/opcache.file_cache=\/var\/www\/.opcache/' /etc/php-7.0.d/10-opcache.ini
-                  sed -i 's/opcache.memory_consumption=.*/opcache.memory_consumption=512/' /etc/php-7.0.d/10-opcache.ini
-                  # download opcache-instance.php to verify opcache status
-                  if [ ! -f /var/www/drupal/${Directory}/opcache-instanceid.php ]; then
-                      aws s3 cp 's3://aws-refarch/drupal/latest/bits/opcache-instanceid.php' /var/www/drupal/${Directory}/.
-                  fi
-              mode: 000500
-              owner: root
-              group: root
         build_drupal:
           files:
             /tmp/install_drupal.sh:
@@ -425,18 +378,15 @@ Resources:
                     "#!/bin/bash -xe\n",
                     "\n",
                     "# make site directory\n",
-                    "if [ ! -d /var/www/drupal/", !Ref Directory, " ]; then\n",                    
+                    "if [ ! -d /var/www/drupal/", !Ref Directory, " ]; then\n",
                     "   mkdir -p /var/www/drupal/", !Ref Directory, "\n",
                     "\n",
                     "   cd /tmp\n",
                     "   wget http://ftp.drupal.org/files/projects/drupal-8.3.5.tar.gz\n",
                     "   cd /var/www/drupal/", !Ref Directory, "\n",
                     "   tar --strip-components=1 -xvzf /tmp/drupal-8.3.5.tar.gz\n",
-                    "   # set permissions of drupal site directories\n", 
+                    "   # set permissions of drupal site directories\n",
                     "   chown -R apache:apache /var/www/drupal/", !Ref Directory, "\n",
-                    "   if [ ! -f /var/www/drupal/", !Ref Directory, "/opcache-instanceid.php ]; then\n",
-                    "     aws s3 cp 's3://aws-refarch/wordpress/latest/bits/opcache-instanceid.php' /var/www/drupal/", !Ref Directory, "/.\n",
-                    "   fi\n",
                     "fi\n"
                   ]
                 ]
@@ -447,18 +397,6 @@ Resources:
           commands:
             install_drupal:
               command: ./install_drupal.sh
-              cwd: /tmp
-              ignoreErrors: false          
-        install_cacheclient:
-          commands:
-            install_cacheclient:
-              command: ./install_cacheclient.sh
-              cwd: /tmp
-              ignoreErrors: false
-        install_opcache:
-          commands:
-            install_opcache:
-              command: ./install_opcache.sh
               cwd: /tmp
               ignoreErrors: false
         start_webserver:

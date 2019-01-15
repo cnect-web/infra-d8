@@ -241,7 +241,7 @@ Resources:
         - Key: Network
           Value: Public
       VpcId: !Ref Vpc
-     
+
   PublicRoute:
     Type: AWS::EC2::Route
     DependsOn: AttachInternetGateway
@@ -359,7 +359,7 @@ Resources:
                 Resource: '*'
 
 Outputs:
-  
+
   Vpc:
     Value: !Ref Vpc
   VpcCidr:
