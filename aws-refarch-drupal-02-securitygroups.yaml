@@ -30,18 +30,6 @@ Parameters:
 
 Resources:
 
-  BastionSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for Bastion instances
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-
-      VpcId:
-        !Ref Vpc
-
   DatabaseSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -102,14 +90,10 @@ Resources:
         !Ref Vpc
 
 Outputs:
-  BastionSecurityGroup:
-    Value: !Ref BastionSecurityGroup
   DatabaseSecurityGroup:
     Value: !Ref DatabaseSecurityGroup
   EfsSecurityGroup:
     Value: !Ref EfsSecurityGroup
-  ElastiCacheSecurityGroup:
-    Value: !Ref ElastiCacheSecurityGroup
   PublicAlbSecurityGroup:
     Value: !Ref PublicAlbSecurityGroup
   WebSecurityGroup:

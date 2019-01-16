@@ -19,8 +19,6 @@ Metadata:
         - DatabaseMasterUsername
         - DatabaseMasterPassword
         - DatabaseName
-        - UseElastiCacheBoolean
-        - ElastiCacheNodeType
     - Label:
         default: Web Tier Parameters
       Parameters:
@@ -47,8 +45,6 @@ Metadata:
         default: DB Master Password
       DatabaseName:
         default: DB Name
-      ElastiCacheNodeType:
-        default: Cache Cluster Node Type
       PublicAlbAcmCertificate:
         default: ALB Certificate ARN
       KeyName:
@@ -109,29 +105,6 @@ Parameters:
   DatabaseName:
     AllowedPattern: ^([a-zA-Z0-9]*)$
     Description: The Amazon RDS master database name.
-    Type: String
-  ElastiCacheNodeType:
-    AllowedValues:
-      - cache.t2.micro
-      - cache.t2.small
-      - cache.t2.medium
-      - cache.m4.large
-      - cache.m4.xlarge
-      - cache.m4.2xlarge
-      - cache.m4.4xlarge
-      - cache.m4.10xlarge
-      - cache.m3.medium
-      - cache.m3.large
-      - cache.m3.xlarge
-      - cache.m3.2xlarge
-      - cache.r3.large
-      - cache.r3.xlarge
-      - cache.r3.2xlarge
-      - cache.r3.4xlarge
-      - cache.r3.8xlarge
-    ConstraintDescription: Must be a valid Amazon ElastiCache node type.
-    Default: cache.t2.medium
-    Description: The Amazon ElastiCache cluster node type.
     Type: String
   KeyName:
     AllowedPattern: ^([a-zA-Z0-9 @.`~!#$%^&*()_+,\\-])*$
@@ -241,11 +214,11 @@ Resources:
           !GetAtt [ newvpc, Outputs.DataSubnet1 ]
         DataSubnet2:
           !GetAtt [ newvpc, Outputs.DataSubnet2 ]
-      TemplateURL: https://s3.amazonaws.com/aws-refarch/drupal/latest/templates/aws-refarch-drupal-03-efs.yaml
+      TemplateURL: https://s3.eu-west-3.amazonaws.com/cnct-cf-templates/aws-refarch-drupal-03-efs.yaml
   newvpc:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.amazonaws.com/aws-refarch/drupal/latest/templates/aws-refarch-drupal-01-newvpc.yaml
+      TemplateURL: https://s3.eu-west-3.amazonaws.com/cnct-cf-templates/aws-refarch-drupal-01-newvpc.yaml
   publicalb:
     Condition: AvailableAWSRegion
     DependsOn: [ newvpc, securitygroups ]
@@ -264,7 +237,7 @@ Resources:
           !GetAtt [ securitygroups, Outputs.PublicAlbSecurityGroup ]
         Vpc:
           !GetAtt [ newvpc, Outputs.Vpc ]
-      TemplateURL: https://s3.amazonaws.com/aws-refarch/drupal/latest/templates/aws-refarch-drupal-03-publicalb.yaml
+      TemplateURL: https://s3.eu-west-3.amazonaws.com/cnct-cf-templates/aws-refarch-drupal-03-publicalb.yaml
   rds:
     Condition: AvailableAWSRegion
     DependsOn: [ newvpc, securitygroups ]
@@ -287,7 +260,7 @@ Resources:
           !GetAtt [ newvpc, Outputs.DataSubnet1 ]
         DataSubnet2:
           !GetAtt [ newvpc, Outputs.DataSubnet2 ]
-      TemplateURL: https://s3.amazonaws.com/aws-refarch/drupal/latest/templates/aws-refarch-drupal-03-rds.yaml
+      TemplateURL: https://s3.eu-west-3.amazonaws.com/cnct-cf-templates/aws-refarch-drupal-03-rds.yaml
   securitygroups:
     Condition: AvailableAWSRegion
     DependsOn: newvpc
@@ -298,7 +271,7 @@ Resources:
           !Ref SshAccessCidr
         Vpc:
           !GetAtt [ newvpc, Outputs.Vpc ]
-      TemplateURL: https://s3.amazonaws.com/aws-refarch/drupal/latest/templates/aws-refarch-drupal-02-securitygroups.yaml
+      TemplateURL: https://s3.eu-west-3.amazonaws.com/cnct-cf-templates/aws-refarch-drupal-02-securitygroups.yaml
   web:
     Condition: AvailableAWSRegion
     DependsOn: [ efs, newvpc, publicalb, securitygroups ]
@@ -351,14 +324,10 @@ Resources:
           !Ref Locale
         Title:
           !Ref Title
-      TemplateURL: https://s3.amazonaws.com/aws-refarch/drupal/latest/templates/aws-refarch-drupal-04-web.yaml
+      TemplateURL: https://s3.eu-west-3.amazonaws.com/cnct-cf-templates/aws-refarch-drupal-04-web.yaml
 
 Outputs:
 
   StackStatus:
     Description: Master Stack Status
     Value: !If [ AvailableAWSRegion, !Join [ '', [ 'Stack created in an available region: ', !Ref 'AWS::Region' ] ], "!!ERROR!!! - Nothing to do! - unavailable AWS Region. You must create this stack in an available AWS Region: 'us-east-1', 'us-east-2', 'us-west-2', 'eu-west-1', 'ap-southeast-2'." ]
-  SiteUrl:
-    Description: The URL of the Drupal site
-    Value: !Join [ '', [ !If [ CreateRecordSet, !Join [ '', [ 'http://www.', !Ref DomainName ] ], !GetAtt [ publicalb, Outputs.PublicAlbHostname ] ], '/drupal' ] ]
-
