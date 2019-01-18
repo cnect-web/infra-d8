@@ -331,34 +331,44 @@ Resources:
         configSets:
           deploy_webserver:
             - install_webserver
-            - build_drupal
-            - install_drupal
-            - start_webserver
         install_webserver:
-          packages:
-            yum:
-              awslogs: []
-              httpd24: []
-              mysql56: []
-              php70: []
-              php70-mysqlnd: []
-              php70-gd: []
           files:
             /tmp/create_site_conf.sh:
               content:
                 !Join [
                   "",[
                     "#!/bin/bash -xe\n",
-                    "if [ ! -f /etc/httpd/conf.d/", !Ref Directory, ".conf ]; then\n",
-                    "   touch /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo 'ServerName 127.0.0.1:80' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo 'DocumentRoot /var/www/drupal/", !Ref Directory, "' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo '<Directory /var/www/drupal/", !Ref Directory, ">' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo '  Options Indexes FollowSymLinks' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo '  AllowOverride All' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo '  Require all granted' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo '</Directory>' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "fi\n"
+                    "# Set the root folder.\n",
+                    "if [ -z ${WEB_ROOT_FOLDER} ]; then export WEB_ROOT_FOLDER=/var/www/html/", !Ref Directory, " ; mkdir -p ${WEB_ROOT_FOLDER} ; fi \n",
+                    "# Enable EPEL repo\n",
+                    "sed -i '0,/enabled=0/{s/enabled=0/enabled=1/}' /etc/yum.repos.d/epel.repo\n",
+                    "# Update package list.\n",
+                    "yum update\n",
+                    "# Install nginx and git.\n",
+                    "yum install -y nginx git\n",
+                    "# Add nginx to startup services\n",
+                    "chkconfig nginx on\n",
+                    "/etc/init.d/nginx start\n",
+                    "# Install additional commonly used php packages\n",
+                    "yum install -y php71 php71-fpm php71-gd php71-imap php71-mbstring php71-mysqlnd php71-opcache php71-pdo php71-pecl-apcu php71-json php71-pdo_mysql php71-mysqli php71-intl php71-xsl php71-sockets php71-ldap\n",
+                    "# Get PHP custom tweaks.\n",
+                    "wget -P /etc/php-7.1.d/ https://s3-eu-west-1.amazonaws.com/cnect-config-files/php_tweaks.ini\n",
+                    "# Add php-fpm to startup services\n",
+                    "chkconfig php-fpm on\n",
+                    "/etc/init.d/php-fpm start\n",
+                    "# Get the nginx config.\n",
+                    "wget -P /etc/nginx/conf.d/ https://s3-eu-west-1.amazonaws.com/cnect-config-files/cnect-nginx-drupal.conf\n",
+                    "# Set the root folder on nginx config.\n",
+                    "sed -i \"s|root /var/www/html;|root ${WEB_ROOT_FOLDER};|\" /etc/nginx/conf.d/cnect-nginx-drupal.conf\n",
+                    "# Override default nginx.conf \n",
+                    "mv /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bckp\n",
+                    "wget -O /etc/nginx/nginx.conf https://s3-eu-west-1.amazonaws.com/cnect-config-files/default_nginx.conf\n",
+                    "# Add ec2-user to apache group.\n",
+                    "usermod -a -G apache ec2-user\n",
+                    "# Set permissions on www folder.\n",
+                    "chown -R apache:apache ${WEB_ROOT_FOLDER}\n",
+                    "# Restart nginx.\n",
+                    "/etc/init.d/nginx restart\n"
                   ]
                 ]
               mode: 000500
@@ -368,46 +378,6 @@ Resources:
             create_site_conf:
               command: ./create_site_conf.sh
               cwd: /tmp
-              ignoreErrors: false
-        build_drupal:
-          files:
-            /tmp/install_drupal.sh:
-              content:
-                !Join [
-                  "",[
-                    "#!/bin/bash -xe\n",
-                    "\n",
-                    "# make site directory\n",
-                    "if [ ! -d /var/www/drupal/", !Ref Directory, " ]; then\n",
-                    "   mkdir -p /var/www/drupal/", !Ref Directory, "\n",
-                    "\n",
-                    "   cd /tmp\n",
-                    "   wget http://ftp.drupal.org/files/projects/drupal-8.3.5.tar.gz\n",
-                    "   cd /var/www/drupal/", !Ref Directory, "\n",
-                    "   tar --strip-components=1 -xvzf /tmp/drupal-8.3.5.tar.gz\n",
-                    "   # set permissions of drupal site directories\n",
-                    "   chown -R apache:apache /var/www/drupal/", !Ref Directory, "\n",
-                    "fi\n"
-                  ]
-                ]
-              mode: 000500
-              owner: root
-              group: root
-        install_drupal:
-          commands:
-            install_drupal:
-              command: ./install_drupal.sh
-              cwd: /tmp
-              ignoreErrors: false
-        start_webserver:
-          services:
-            sysvinit:
-              httpd:
-                enabled: true
-                ensureRunning: true
-          commands:
-            start_webserver:
-              command: service httpd restart
               ignoreErrors: false
     Properties:
       IamInstanceProfile: !Ref WebInstanceProfile
@@ -422,9 +392,9 @@ Resources:
           !Sub |
             #!/bin/bash -xe
             yum update -y
-            mkdir -p /var/www/drupal
-            mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /var/www/drupal
+            mkdir -p /var/www/html
+            mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /var/www/html
             /opt/aws/bin/cfn-init --configsets deploy_webserver --verbose --stack ${AWS::StackName} --resource WebLaunchConfiguration --region ${AWS::Region}
             sleep 600
             /opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackName} --resource WebAutoScalingGroup --region ${AWS::Region}
-            service httpd restart
+            /etc/init.d/nginx restart
