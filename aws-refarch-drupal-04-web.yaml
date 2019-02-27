@@ -326,151 +326,6 @@ Resources:
         Timeout: PT20M
   WebLaunchConfiguration:
     Type: AWS::AutoScaling::LaunchConfiguration
-    Metadata:
-      AWS::CloudFormation::Init:
-        configSets:
-          deploy_webserver:
-            - install_webserver
-            - build_cacheclient
-            - build_drupal
-            - build_opcache
-            - install_cacheclient
-            - install_drupal
-            - install_opcache
-            - start_webserver
-        install_webserver:
-          packages:
-            yum:
-              awslogs: []
-              httpd24: []
-              mysql56: []
-              php70: []
-              php70-mysqlnd: []
-              php70-gd: []
-          files:
-            /tmp/create_site_conf.sh:
-              content:
-                !Join [
-                  "",[
-                    "#!/bin/bash -xe\n",
-                    "if [ ! -f /etc/httpd/conf.d/", !Ref Directory, ".conf ]; then\n",
-                    "   touch /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo 'ServerName 127.0.0.1:80' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo 'DocumentRoot /var/www/", !Ref Directory, "' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo '<Directory /var/www/", !Ref Directory, ">' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo '  Options Indexes FollowSymLinks' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo '  AllowOverride All' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo '  Require all granted' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo '</Directory>' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "fi\n"
-                  ]
-                ]
-              mode: 000500
-              owner: root
-              group: root
-          commands:
-            create_site_conf:
-              command: ./create_site_conf.sh
-              cwd: /tmp
-              ignoreErrors: false
-        build_cacheclient:
-          packages:
-            yum:
-              gcc-c++: []
-          files:
-            /tmp/install_cacheclient.sh:
-              content:
-                !Sub |
-                  #!/bin/bash -xe
-                  aws s3 cp 's3://aws-refarch/drupal/latest/bits/AmazonElastiCacheClusterClient-2.0.1-PHP70-64bit.tar.gz' /tmp/.
-                  tar -xf '/tmp/AmazonElastiCacheClusterClient-2.0.1-PHP70-64bit.tar.gz'
-                  cp '/tmp/artifact/amazon-elasticache-cluster-client.so' /usr/lib64/php/7.0/modules/
-                  if [ ! -f /etc/php-7.0.d/50-memcached.ini ]; then
-                      touch /etc/php-7.0.d/50-memcached.ini
-                  fi
-                  sed -i '3i extension=/usr/lib64/php/7.0/modules/amazon-elasticache-cluster-client.so;' /etc/php-7.0.d/50-memcached.ini
-                  sed -i '3i extension=igbinary.so;' /etc/php-7.0.d/50-memcached.ini
-              mode: 000500
-              owner: root
-              group: root
-        build_opcache:
-          packages:
-            yum:
-              php70-opcache: []
-          files:
-            /tmp/install_opcache.sh:
-              content:
-                !Sub |
-                  #!/bin/bash -xe
-                  # create hidden opcache directory locally & change owner to apache
-                  if [ ! -d /var/www/.opcache ]; then
-                      mkdir -p /var/www/.opcache
-                  fi
-                  # enable opcache in /etc/php-7.0.d/10-opcache.ini
-                  sed -i 's/;opcache.file_cache=.*/opcache.file_cache=\/var\/www\/.opcache/' /etc/php-7.0.d/10-opcache.ini
-                  sed -i 's/opcache.memory_consumption=.*/opcache.memory_consumption=512/' /etc/php-7.0.d/10-opcache.ini
-                  # download opcache-instance.php to verify opcache status
-                  if [ ! -f /www/sites/${Directory}/opcache-instanceid.php ]; then
-                      aws s3 cp 's3://aws-refarch/drupal/latest/bits/opcache-instanceid.php' /www/sites/${Directory}/.
-                  fi
-              mode: 000500
-              owner: root
-              group: root
-        build_drupal:
-          files:
-            /tmp/install_drupal.sh:
-              content:
-                !Join [
-                  "",[
-                    "#!/bin/bash -xe\n",
-                    "\n",
-                    "# make site directory\n",
-                    "if [ ! -d /www/sites/", !Ref Directory, " ]; then\n",
-                    "   mkdir -p /www/sites/", !Ref Directory, "\n",
-                    "\n",
-                    "   cd /tmp\n",
-                    "   wget http://ftp.drupal.org/files/projects/drupal-8.3.5.tar.gz\n",
-                    "   cd /www/sites/", !Ref Directory, "\n",
-                    "   tar --strip-components=1 -xvzf /tmp/drupal-8.3.5.tar.gz\n",
-                    "   # set permissions of drupal site directories\n",
-                    "   chown -R apache:apache /www/sites/", !Ref Directory, "\n",
-                    "   if [ ! -f /www/sites/", !Ref Directory, "/opcache-instanceid.php ]; then\n",
-                    "     aws s3 cp 's3://aws-refarch/wordpress/latest/bits/opcache-instanceid.php' /www/sites/", !Ref Directory, "/.\n",
-                    "   fi\n",
-                    "fi\n"
-                  ]
-                ]
-              mode: 000500
-              owner: root
-              group: root
-        install_drupal:
-          commands:
-            install_drupal:
-              command: ./install_drupal.sh
-              cwd: /tmp
-              ignoreErrors: false
-        install_cacheclient:
-          commands:
-            install_cacheclient:
-              command: ./install_cacheclient.sh
-              cwd: /tmp
-              ignoreErrors: false
-        install_opcache:
-          commands:
-            install_opcache:
-              command: ./install_opcache.sh
-              cwd: /tmp
-              ignoreErrors: false
-        start_webserver:
-          services:
-            sysvinit:
-              httpd:
-                enabled: true
-                ensureRunning: true
-          commands:
-            start_webserver:
-              command: service httpd restart
-              ignoreErrors: false
     Properties:
       IamInstanceProfile: !Ref WebInstanceProfile
       ImageId: !FindInMap [ RegionMap, !Ref 'AWS::Region', AMI ]
@@ -483,15 +338,39 @@ Resources:
         "Fn::Base64":
           !Sub |
             #!/bin/bash -xe
-            yum update -y
+            # Mount the EFS partition and create container folders.
             mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /www/
             mkdir -p /www/sites
             mkdir -p /www/files
             mkdir -p /www/config
-            /opt/aws/bin/cfn-init --configsets deploy_webserver --verbose --stack ${AWS::StackName} --resource WebLaunchConfiguration --region ${AWS::Region}
-            sleep 600
+            # Enable EPEL repo
+            sed -i '0,/enabled=0/{s/enabled=0/enabled=1/}' /etc/yum.repos.d/epel.repo
+            # Update package list.
+            yum update -y
+            # Install nginx, git, mysql.
+            yum install -y nginx git mysql
+            # Add nginx to startup services
+            chkconfig nginx on
+            /etc/init.d/nginx start
+            # Install additional commonly used php packages
+            yum install -y php71 php71-fpm php71-gd php71-imap php71-mbstring php71-mysqlnd php71-opcache php71-pdo php71-pecl-apcu php71-json php71-pdo_mysql php71-mysqli php71-intl php71-xsl php71-sockets php71-ldap
+            # Get PHP custom tweaks.
+            # Allows overriding php settings.
+            wget -P /etc/php-7.1.d/ https://s3-eu-west-1.amazonaws.com/cnect-config-files/php_tweaks.ini
+            # Add php-fpm to startup services
+            chkconfig php-fpm on
+            /etc/init.d/php-fpm start
+            # Override default nginx.conf
+            # This prevents the default server config that comes bundled with nginx.
+            mv /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bckp
+            wget -O /etc/nginx/nginx.conf https://s3-eu-west-1.amazonaws.com/cnect-config-files/default_nginx.conf
+            # Add ec2-user to apache group.
+            usermod -a -G apache ec2-user
+            # Set permissions on www folder.
+            chown -R apache:apache /www/
+            # Restart nginx.
+            /etc/init.d/nginx restart
             /opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackName} --resource WebAutoScalingGroup --region ${AWS::Region}
-#            service httpd restart
 
 Outputs:
 
