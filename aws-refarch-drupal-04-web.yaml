@@ -46,7 +46,7 @@ Metadata:
       DatabaseClusterEndpointAddress:
         default: DB Cluster Endpoint Address
       DatabaseMasterUsername:
-        default: DB Master Username  
+        default: DB Master Username
       DatabaseMasterPassword:
         default: DB Master Password
       DatabaseName:
@@ -181,7 +181,7 @@ Parameters:
     Type: AWS::EC2::Subnet::Id
   WebSubnet1:
     Description: Select an existing web subnet for AZ 1.
-    Type: AWS::EC2::Subnet::Id 
+    Type: AWS::EC2::Subnet::Id
   WebSubnet2:
     Description: Select an existing web subnet for AZ 2.
     Type: AWS::EC2::Subnet::Id
@@ -191,7 +191,7 @@ Parameters:
     Type: String
   AdminPassword:
     AllowedPattern: ^([a-zA-Z0-9`~!#$%^&*()_+,\\-])*$
-    ConstraintDescription: Must be letters (upper or lower), numbers, and these special characters '_'`~!#$%^&*()_+,-   
+    ConstraintDescription: Must be letters (upper or lower), numbers, and these special characters '_'`~!#$%^&*()_+,-
     Description: The Drupal admin password.
     Type: String
     NoEcho: true
@@ -237,33 +237,33 @@ Mappings:
 
   RegionMap:
     ap-northeast-1:
-      AMI: ami-3bd3c45c
+      AMI: ami-00a5245b4816c38e6
     ap-northeast-2:
-      AMI: ami-e21cc38c
+      AMI: ami-00dc207f8ba6dc919
     ap-south-1:
-      AMI: ami-47205e28
+      AMI: ami-0ad42f4f66f6c1cc9
     ap-southeast-1:
-      AMI: ami-77af2014
+      AMI: ami-05b3bcf7f311194b3
     ap-southeast-2:
-      AMI: ami-10918173
+      AMI: ami-02fd0b06f06d93dfc
     ca-central-1:
-      AMI: ami-a7aa15c3
+      AMI: ami-07423fb63ea0a0930
     eu-central-1:
-      AMI: ami-82be18ed
+      AMI: ami-0cfbf4f6db41068ac
     eu-west-1:
-      AMI: ami-d7b9a2b1
+      AMI: ami-08935252a36e25f85
     eu-west-2:
-      AMI: ami-ed100689
+      AMI: ami-01419b804382064e4
     sa-east-1:
-      AMI: ami-87dab1eb
+      AMI: ami-05145e0b28ad
     us-east-1:
-      AMI: ami-a4c7edb2
+      AMI: ami-0080e4c5bc078760e
     us-east-2:
-      AMI: ami-8a7859ef
+      AMI: ami-0cd3dfa4e37921605
     us-west-1:
-      AMI: ami-327f5352
+      AMI: ami-0ec6517f6edbf8044
     us-west-2:
-      AMI: ami-6df1e514
+      AMI: ami-01e24be29428c15b2
 
 Resources:
 
@@ -353,11 +353,11 @@ Resources:
                 !Join [
                   "",[
                     "#!/bin/bash -xe\n",
-                    "if [ ! -f /etc/httpd/conf.d/", !Ref Directory, ".conf ]; then\n",                    
+                    "if [ ! -f /etc/httpd/conf.d/", !Ref Directory, ".conf ]; then\n",
                     "   touch /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
                     "   echo 'ServerName 127.0.0.1:80' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo 'DocumentRoot /var/www/drupal/", !Ref Directory, "' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
-                    "   echo '<Directory /var/www/drupal/", !Ref Directory, ">' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
+                    "   echo 'DocumentRoot /var/www/", !Ref Directory, "' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
+                    "   echo '<Directory /var/www/", !Ref Directory, ">' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
                     "   echo '  Options Indexes FollowSymLinks' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
                     "   echo '  AllowOverride All' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
                     "   echo '  Require all granted' >> /etc/httpd/conf.d/", !Ref Directory, ".conf\n",
@@ -376,7 +376,7 @@ Resources:
         build_cacheclient:
           packages:
             yum:
-              gcc-c++: []  
+              gcc-c++: []
           files:
             /tmp/install_cacheclient.sh:
               content:
@@ -403,15 +403,15 @@ Resources:
                 !Sub |
                   #!/bin/bash -xe
                   # create hidden opcache directory locally & change owner to apache
-                  if [ ! -d /var/www/.opcache ]; then                    
+                  if [ ! -d /var/www/.opcache ]; then
                       mkdir -p /var/www/.opcache
                   fi
                   # enable opcache in /etc/php-7.0.d/10-opcache.ini
                   sed -i 's/;opcache.file_cache=.*/opcache.file_cache=\/var\/www\/.opcache/' /etc/php-7.0.d/10-opcache.ini
                   sed -i 's/opcache.memory_consumption=.*/opcache.memory_consumption=512/' /etc/php-7.0.d/10-opcache.ini
                   # download opcache-instance.php to verify opcache status
-                  if [ ! -f /var/www/drupal/${Directory}/opcache-instanceid.php ]; then
-                      aws s3 cp 's3://aws-refarch/drupal/latest/bits/opcache-instanceid.php' /var/www/drupal/${Directory}/.
+                  if [ ! -f /www/sites/${Directory}/opcache-instanceid.php ]; then
+                      aws s3 cp 's3://aws-refarch/drupal/latest/bits/opcache-instanceid.php' /www/sites/${Directory}/.
                   fi
               mode: 000500
               owner: root
@@ -425,17 +425,17 @@ Resources:
                     "#!/bin/bash -xe\n",
                     "\n",
                     "# make site directory\n",
-                    "if [ ! -d /var/www/drupal/", !Ref Directory, " ]; then\n",                    
-                    "   mkdir -p /var/www/drupal/", !Ref Directory, "\n",
+                    "if [ ! -d /www/sites/", !Ref Directory, " ]; then\n",
+                    "   mkdir -p /www/sites/", !Ref Directory, "\n",
                     "\n",
                     "   cd /tmp\n",
                     "   wget http://ftp.drupal.org/files/projects/drupal-8.3.5.tar.gz\n",
-                    "   cd /var/www/drupal/", !Ref Directory, "\n",
+                    "   cd /www/sites/", !Ref Directory, "\n",
                     "   tar --strip-components=1 -xvzf /tmp/drupal-8.3.5.tar.gz\n",
-                    "   # set permissions of drupal site directories\n", 
-                    "   chown -R apache:apache /var/www/drupal/", !Ref Directory, "\n",
-                    "   if [ ! -f /var/www/drupal/", !Ref Directory, "/opcache-instanceid.php ]; then\n",
-                    "     aws s3 cp 's3://aws-refarch/wordpress/latest/bits/opcache-instanceid.php' /var/www/drupal/", !Ref Directory, "/.\n",
+                    "   # set permissions of drupal site directories\n",
+                    "   chown -R apache:apache /www/sites/", !Ref Directory, "\n",
+                    "   if [ ! -f /www/sites/", !Ref Directory, "/opcache-instanceid.php ]; then\n",
+                    "     aws s3 cp 's3://aws-refarch/wordpress/latest/bits/opcache-instanceid.php' /www/sites/", !Ref Directory, "/.\n",
                     "   fi\n",
                     "fi\n"
                   ]
@@ -448,7 +448,7 @@ Resources:
             install_drupal:
               command: ./install_drupal.sh
               cwd: /tmp
-              ignoreErrors: false          
+              ignoreErrors: false
         install_cacheclient:
           commands:
             install_cacheclient:
@@ -484,12 +484,14 @@ Resources:
           !Sub |
             #!/bin/bash -xe
             yum update -y
-            mkdir -p /var/www/drupal
-            mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /var/www/drupal
+            mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /www/
+            mkdir -p /www/sites
+            mkdir -p /www/files
+            mkdir -p /www/config
             /opt/aws/bin/cfn-init --configsets deploy_webserver --verbose --stack ${AWS::StackName} --resource WebLaunchConfiguration --region ${AWS::Region}
             sleep 600
             /opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackName} --resource WebAutoScalingGroup --region ${AWS::Region}
-            service httpd restart
+#            service httpd restart
 
 Outputs:
 
