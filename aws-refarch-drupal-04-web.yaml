@@ -339,6 +339,7 @@ Resources:
           !Sub |
             #!/bin/bash -xe
             # Mount the EFS partition and create container folders.
+            mkdir /www/
             mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /www/
             mkdir -p /www/sites
             mkdir -p /www/files
@@ -369,7 +370,7 @@ Resources:
             # Set permissions on www folder.
             chown -R apache:apache /www/
             # Restart nginx.
-            /etc/init.d/nginx restart
+            /etc/init.d/nginx start
             /opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackName} --resource WebAutoScalingGroup --region ${AWS::Region}
 
 Outputs:
