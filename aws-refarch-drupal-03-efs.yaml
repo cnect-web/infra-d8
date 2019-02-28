@@ -40,7 +40,7 @@ Parameters:
     Type: AWS::EC2::Subnet::Id
 
 Conditions:
-  
+
   MoreThan2AZ:
     !Or [
       !Equals [ !Ref 'AWS::Region', us-east-1 ],
@@ -92,4 +92,4 @@ Outputs:
     Value: !Join [ '.', [ !Ref ElasticFileSystem, 'efs', !Ref 'AWS::Region', 'amazonaws', 'com' ] ]
   ElasticFileSystemMountCommand:
     Description: Mount command for mounting the EFS file system.
-    Value: !Join [ '', [ 'sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ', !Join [ '.', [ !Ref ElasticFileSystem, 'efs', !Ref 'AWS::Region', 'amazonaws', 'com:/ /var/www/drupal' ] ] ] ]
+    Value: !Join [ '', [ 'sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,fsc,retrans=2 ', !Join [ '.', [ !Ref ElasticFileSystem, 'efs', !Ref 'AWS::Region', 'amazonaws', 'com:/ /www' ] ] ] ]

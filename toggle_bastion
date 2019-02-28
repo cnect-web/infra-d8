@@ -1,0 +1,32 @@
+# Turn off bastion alltogether.
+TYPE=${1:-security_group}
+
+if [ "$TYPE" == "security_group" ]; then
+  BASTION_INSTANCE_ID=$(aws autoscaling describe-auto-scaling-groups --query "AutoScalingGroups[*].Instances[*].InstanceId | [0]" --output text)
+  BASTION_SECURITY_GROUP_ID=$(aws ec2 describe-instances --instance-id $BASTION_INSTANCE_ID --query "Reservations[*].Instances[*].SecurityGroups[*].GroupId" --output text)
+
+  CURRENT_RULES=$(aws ec2 describe-security-groups --group-ids $BASTION_SECURITY_GROUP_ID --query "SecurityGroups[*].IpPermissions" --output text)
+  if [ -z "$CURRENT_RULES" ]; then
+    echo "SSH access open."
+    ADD_RULE=$(aws ec2 authorize-security-group-ingress --group-id $BASTION_SECURITY_GROUP_ID --protocol tcp --port 22 --cidr 0.0.0.0/0)
+  else
+    echo "SSH access closed."
+    REMOVE_RULE=$(aws ec2 revoke-security-group-ingress --group-id $BASTION_SECURITY_GROUP_ID --ip-permissions '[{"IpProtocol": "tcp", "FromPort": 22, "ToPort": 22, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}]')
+  fi
+else if [ "$TYPE" == 'min_instances' ]; then
+  ASG_NAME=$(aws autoscaling describe-auto-scaling-groups --query "AutoScalingGroups[*].AutoScalingGroupName | [0]" --output text)
+  ASG_STATUS=$(aws autoscaling describe-auto-scaling-groups --query "AutoScalingGroups[*].DesiredCapacity | [0]" --output text)
+
+  echo $ASG_STATUS
+
+  if [ "$ASG_STATUS" -eq 0 ]; then
+    echo "Enabling Bastion..."
+    DISCARD=$(aws autoscaling update-auto-scaling-group --auto-scaling-group-name $ASG_NAME --desired-capacity 1)
+    echo "Done."
+  else
+    echo "Disabling Bastion..."
+    DISCARD=$(aws autoscaling update-auto-scaling-group --auto-scaling-group-name $ASG_NAME --desired-capacity 0)
+    echo "Done."
+  fi
+fi
+

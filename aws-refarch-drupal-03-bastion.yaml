@@ -100,7 +100,7 @@ Resources:
       LaunchConfigurationName: !Ref BastionLaunchConfiguration
       MaxSize: 1
       MinSize: 0
-      DesiredCapacity: 0
+      DesiredCapacity: 1
       Tags:
         - Key: Name
           Value: !Join [ '', [ 'Bastion / ', !Ref 'AWS::StackName' ] ]
@@ -117,10 +117,16 @@ Resources:
       IamInstanceProfile: !Ref BastionInstanceProfile
       ImageId: !FindInMap [ RegionMap, !Ref 'AWS::Region', AMI ]
       InstanceMonitoring: true
-      InstanceType: t2.small
+      InstanceType: t2.micro
       KeyName: !Ref KeyName
       SecurityGroups:
         - !Ref BastionSecurityGroup
+      UserData:
+        "Fn::Base64":
+          !Sub |
+            #!/bin/bash -xe
+            yum install fail2ban -y
+            chkconfig fail2ban on
   BastionInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:

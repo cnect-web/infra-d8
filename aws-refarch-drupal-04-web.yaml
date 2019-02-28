@@ -338,18 +338,14 @@ Resources:
         "Fn::Base64":
           !Sub |
             #!/bin/bash -xe
-            # Mount the EFS partition and create container folders.
-            mkdir /www/
-            mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /www/
-            mkdir -p /www/sites
-            mkdir -p /www/files
-            mkdir -p /www/config
             # Enable EPEL repo
             sed -i '0,/enabled=0/{s/enabled=0/enabled=1/}' /etc/yum.repos.d/epel.repo
             # Update package list.
             yum update -y
             # Install nginx, git, mysql.
-            yum install -y nginx git mysql
+            yum install -y nginx git mysql cachefilesd
+            # Add cachefilesd to startup services
+            chkconfig cachefilesd on
             # Add nginx to startup services
             chkconfig nginx on
             /etc/init.d/nginx start
@@ -363,14 +359,28 @@ Resources:
             /etc/init.d/php-fpm start
             # Override default nginx.conf
             # This prevents the default server config that comes bundled with nginx.
-            mv /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bckp
+            mv /etc/nginx/nginx.conf /etc/nginx/nginx.cf.bckp
             wget -O /etc/nginx/nginx.conf https://s3-eu-west-1.amazonaws.com/cnect-config-files/default_nginx.conf
             # Add ec2-user to apache group.
             usermod -a -G apache ec2-user
-            # Set permissions on www folder.
-            chown -R apache:apache /www/
             # Restart nginx.
             /etc/init.d/nginx start
+            # Set nginx to search for config files inside the mounted volume.
+            sed -i "s/include \/etc\/nginx\/conf.d\/\*.conf/include \/www\/config\/*.conf/g" /etc/nginx/nginx.conf
+            # Mount the EFS partition and create container folders.
+            mkdir /www/
+            mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,fsc,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /www/
+            mkdir -p /www/sites
+            mkdir -p /www/files
+            mkdir -p /www/config
+            # Set permissions on www folder.
+            chown -R apache:apache /www/
+            # Install composer
+            wget https://getcomposer.org/installer
+            export HOME=/home/ec2-user && php installer
+            mv composer.phar /usr/local/bin/composer
+            chown ec2-user:ec2-user /usr/local/bin/composer
+            runuser -m ec2-user -c "export HOME=/home/ec2-user && composer global require hirak/prestissimo"
             /opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackName} --resource WebAutoScalingGroup --region ${AWS::Region}
 
 Outputs:
