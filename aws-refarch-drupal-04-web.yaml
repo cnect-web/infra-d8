@@ -334,54 +334,89 @@ Resources:
       KeyName: !Ref KeyName
       SecurityGroups:
       - !Ref WebSecurityGroup
+      BlockDeviceMappings:
+      - DeviceName: "/dev/xvda"
+        Ebs:
+          VolumeSize: "30"
       UserData:
         "Fn::Base64":
           !Sub |
             #!/bin/bash -xe
+            export PLATFORM_VERSION=2.5.135.6
             # Enable EPEL repo
-            sed -i '0,/enabled=0/{s/enabled=0/enabled=1/}' /etc/yum.repos.d/epel.repo
+            yum-config-manager --enable epel
             # Update package list.
             yum update -y
             # Install nginx, git, mysql.
-            yum install -y nginx git mysql cachefilesd
-            # Add cachefilesd to startup services
-            chkconfig cachefilesd on
+            yum install -y nginx git mysql
             # Add nginx to startup services
             chkconfig nginx on
             /etc/init.d/nginx start
             # Install additional commonly used php packages
-            yum install -y php71 php71-fpm php71-gd php71-imap php71-mbstring php71-mysqlnd php71-opcache php71-pdo php71-pecl-apcu php71-json php71-pdo_mysql php71-mysqli php71-intl php71-xsl php71-sockets php71-ldap
+            yum install -y \
+              php71 \
+              php71-fpm \
+              php71-gd \
+              php71-imap \
+              php71-mbstring \
+              php71-mysqlnd \
+              php71-opcache \
+              php71-pdo \
+              php71-pecl-apcu \
+              php71-json \
+              php71-pdo_mysql \
+              php71-mysqli \
+              php71-intl \
+              php71-xsl \
+              php71-sockets \
+              php71-memcache \
+              php71-ldap
             # Get PHP custom tweaks.
-            # Allows overriding php settings.
             wget -P /etc/php-7.1.d/ https://s3-eu-west-1.amazonaws.com/cnect-config-files/php_tweaks.ini
             # Add php-fpm to startup services
             chkconfig php-fpm on
             /etc/init.d/php-fpm start
             # Override default nginx.conf
-            # This prevents the default server config that comes bundled with nginx.
-            mv /etc/nginx/nginx.conf /etc/nginx/nginx.cf.bckp
-            wget -O /etc/nginx/nginx.conf https://s3-eu-west-1.amazonaws.com/cnect-config-files/default_nginx.conf
+            mv /etc/nginx/nginx.conf /etc/nginx/nginx.cnf.bckp
+            wget https://s3-eu-west-1.amazonaws.com/cnect-config-files/default_nginx.conf -O /etc/nginx/nginx.conf
+            # Get the nginx config for the platform.
+            wget https://s3-eu-west-1.amazonaws.com/cnect-config-files/cnect-nginx-drupal.conf -O /etc/nginx/conf.d/platform.conf
+            sed -i "s|root /var/www/html;|root /var/www/html/platform;|g" /etc/nginx/conf.d/platform.conf
             # Add ec2-user to apache group.
             usermod -a -G apache ec2-user
             # Restart nginx.
-            /etc/init.d/nginx start
-            # Set nginx to search for config files inside the mounted volume.
-            sed -i "s/include \/etc\/nginx\/conf.d\/\*.conf/include \/www\/config\/*.conf/g" /etc/nginx/nginx.conf
+            /etc/init.d/nginx restart
+            # Get & build the platform.
+            mkdir -p /tmp/platform-dev-$PLATFORM_VERSION
+            wget https://github.com/ec-europa/platform-dev/releases/download/$PLATFORM_VERSION/platform-dev-$PLATFORM_VERSION.tar.gz -O /tmp/platform-dev-$PLATFORM_VERSION.tar.gz
+            tar zxvf /tmp/platform-dev-$PLATFORM_VERSION.tar.gz -C /tmp/platform-dev-$PLATFORM_VERSION
+            mv /tmp/platform-dev-$PLATFORM_VERSION /var/www/html/platform
+            chown -R apache:apache /var/www/html/platform
             # Mount the EFS partition and create container folders.
-            mkdir /www/
-            mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,fsc,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /www/
-            mkdir -p /www/sites
-            mkdir -p /www/files
-            mkdir -p /www/config
-            # Set permissions on www folder.
-            chown -R apache:apache /www/
-            # Install composer
-            wget https://getcomposer.org/installer
-            export HOME=/home/ec2-user && php installer
-            mv composer.phar /usr/local/bin/composer
-            chown ec2-user:ec2-user /usr/local/bin/composer
-            runuser -m ec2-user -c "export HOME=/home/ec2-user && composer global require hirak/prestissimo"
+            mkdir /shared/
+            mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /shared/
+            if [ ! -f /shared/platform/sites/default/settings.php ]; then
+              mkdir -p /shared/platform/sites/default/files
+              cp /var/www/html/platform/sites/default/default.settings.php /shared/platform/sites/default/settings.php
+            fi
+            ln -s /shared/platform/sites/default/settings.php /var/www/html/platform/sites/default/settings.php
+            ln -sf /shared/platform/sites/default/files /var/www/html/platform/sites/default/files
+            # Set permissions on shared folder.
+            chown -R apache:apache /shared/
             /opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackName} --resource WebAutoScalingGroup --region ${AWS::Region}
+            # Install composer, drush and registry-rebuild.
+            export COMPOSER_HOME=/home/ec2-user/.composer
+            curl --silent --show-error https://getcomposer.org/installer -o installer.php
+            curl --silent --show-error https://composer.github.io/installer.sig -o installer.sig
+            php -r "if (hash_file('SHA384', 'installer.php') === trim(file_get_contents('installer.sig'))) { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('installer.php'); unlink('installer.sig');} echo PHP_EOL;"
+            php installer.php --install-dir=/usr/local/bin --filename=composer
+            php -r "unlink('installer.php'); unlink('installer.sig');"
+            chown ec2-user:ec2-user /usr/local/bin/composer
+            chown -R ec2-user:ec2-user /home/ec2-user/.composer
+            runuser -m ec2-user -c "/usr/local/bin/composer global require hirak/prestissimo && /usr/local/bin/composer config --global github-protocols https"
+            runuser -m ec2-user -c "/usr/local/bin/composer global require drush/drush:7.*"
+            echo "export PATH=$COMPOSER_HOME/vendor/bin:/usr/local/bin:$PATH" >> /home/ec2-user/.bashrc
+            runuser -m ec2-user -c "$COMPOSER_HOME/vendor/bin/drush @none dl registry_rebuild-7.x"
 
 Outputs:
 

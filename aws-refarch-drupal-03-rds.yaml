@@ -45,7 +45,7 @@ Parameters:
       - db.r3.xlarge
       - db.r3.2xlarge
       - db.r3.4xlarge
-      - db.r3.8xlarge    
+      - db.r3.8xlarge
     ConstraintDescription: Must be a valid RDS instance class.
     Default: db.t2.medium
     Description: The Amazon RDS database instance class.
@@ -59,7 +59,7 @@ Parameters:
     Type: String
   DatabaseMasterPassword:
     AllowedPattern: ^([a-z0-9A-Z`~!#$%^&*()_+,\\-])*$
-    ConstraintDescription: Must be letters (upper or lower), numbers, and these special characters '_'`~!#$%^&*()_+,-    
+    ConstraintDescription: Must be letters (upper or lower), numbers, and these special characters '_'`~!#$%^&*()_+,-
     Description: The Amazon RDS master password.
     MaxLength: 41
     MinLength: 8
@@ -97,6 +97,16 @@ Conditions:
 
 Resources:
 
+  RDSInstanceSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: 'RDS instance access credentials'
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "cnect_db_admin"}'
+        GenerateStringKey: 'password'
+        PasswordLength: 16
+        ExcludeCharacters: '"@/\'
+
   DatabaseCluster:
     Type: AWS::RDS::DBCluster
     Properties:
@@ -104,8 +114,8 @@ Resources:
       DatabaseName: !Ref DatabaseName
       DBSubnetGroupName: !Ref DataSubnetGroup
       Engine: aurora
-      MasterUsername: !Ref DatabaseMasterUsername
-      MasterUserPassword: !Ref DatabaseMasterPassword
+      MasterUsername: !Join ['', ['{{resolve:secretsmanager:', !Ref RDSInstanceSecret, ':SecretString:username}}' ]]
+      MasterUserPassword: !Join ['', ['{{resolve:secretsmanager:', !Ref RDSInstanceSecret, ':SecretString:password}}' ]]
       Port: 3306
       Tags:
         - Key: Name

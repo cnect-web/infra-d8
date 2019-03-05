@@ -18,7 +18,7 @@ aws cloudformation deploy \
 --parameter-overrides \
 KeyName=$KEY_NAME \
 DomainName="" \
-DatabaseName="drupal" \
+DatabaseName="futurium" \
 PublicAlbAcmCertificate="" \
 AdminEmail="test@test.net" \
 AdminUsername="admin" \
