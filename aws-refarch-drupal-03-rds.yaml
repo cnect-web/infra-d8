@@ -105,7 +105,7 @@ Resources:
       DBSubnetGroupName: !Ref DataSubnetGroup
       Engine: aurora
       MasterUsername: !Ref DatabaseMasterUsername
-      MasterUserPassword: !Ref DatabaseMasterUsername
+      MasterUserPassword: !Ref DatabaseMasterPassword
       Port: 3306
       Tags:
         - Key: Name

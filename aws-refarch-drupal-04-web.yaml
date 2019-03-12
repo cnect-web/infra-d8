@@ -259,7 +259,7 @@ Mappings:
     eu-central-1:
       AMI: ami-0cfbf4f6db41068ac
     eu-west-1:
-      AMI: ami-099f7df8b42bbff6b
+      AMI: ami-08935252a36e25f85
     eu-west-2:
       AMI: ami-01419b804382064e4
     sa-east-1:
