@@ -97,16 +97,6 @@ Conditions:
 
 Resources:
 
-  RDSInstanceSecret:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Description: 'RDS instance access credentials'
-      GenerateSecretString:
-        SecretStringTemplate: '{"username": "cnect_db_admin"}'
-        GenerateStringKey: 'password'
-        PasswordLength: 16
-        ExcludeCharacters: '"@/\'
-
   DatabaseCluster:
     Type: AWS::RDS::DBCluster
     Properties:
@@ -114,8 +104,8 @@ Resources:
       DatabaseName: !Ref DatabaseName
       DBSubnetGroupName: !Ref DataSubnetGroup
       Engine: aurora
-      MasterUsername: !Join ['', ['{{resolve:secretsmanager:', !Ref RDSInstanceSecret, ':SecretString:username}}' ]]
-      MasterUserPassword: !Join ['', ['{{resolve:secretsmanager:', !Ref RDSInstanceSecret, ':SecretString:password}}' ]]
+      MasterUsername: !Ref DatabaseMasterUsername
+      MasterUserPassword: !Ref DatabaseMasterUsername
       Port: 3306
       Tags:
         - Key: Name

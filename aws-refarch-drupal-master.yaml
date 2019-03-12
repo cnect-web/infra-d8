@@ -25,6 +25,7 @@ Metadata:
         default: Web Tier Parameters
       Parameters:
         - PublicAlbAcmCertificate
+        - AnsiblePullGitRepo
         - WebInstanceType
         - WebAsgMax
         - WebAsgMin
@@ -57,6 +58,8 @@ Metadata:
         default: SSH Access From
       UseElastiCacheBoolean:
         default: Use a Cache Cluster?
+      AnsiblePullGitRepo:
+        default: Ansible Playbook repository URL
       WebAsgMax:
         default: Web ASG Max
       WebAsgMin:
@@ -155,6 +158,11 @@ Parameters:
       - False
     Default: True
     Description: Specifies whether an ElastiCache Cache Cluster should be created to cache Drupal database content.
+    Type: String
+  AnsiblePullGitRepo:
+    AllowedPattern: ^([a-z\-\:\/\.A-Z0-9]*)$
+    Description: A git repository containing an Ansible Playbook to configure the instances.
+    ConstraintDescription: Must contain only alphanumeric characters and be at least 8 characters.
     Type: String
   WebAsgMax:
     AllowedPattern: ^((?!0$)[1-2]?[0-9]|30)$
@@ -372,6 +380,8 @@ Resources:
           !GetAtt [ publicalb, Outputs.PublicAlbHostname ]
         SslCertificate:
           !GetAtt [ publicalb, Outputs.SslCertificate ]
+        AnsiblePullGitRepo:
+          !Ref AnsiblePullGitRepo
         WebAsgMax:
           !Ref WebAsgMax
         WebAsgMin:
