@@ -362,7 +362,7 @@ Resources:
               yum install -y git ansible jq
               # Mount the EFS filesystem.
               mkdir /shared
-              mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${AWS_EFS}.efs.${AWS_REGION}.amazonaws.com:/ /shared/
+              mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /shared/
               # Store vars for later use.
               echo "export MYSQL_HOST=${DatabaseClusterEndpointAddress}" > /etc/profile.d/vars.sh
               echo "export MYSQL_ROOT_USER=${MysqlUsername}" >> /etc/profile.d/vars.sh
@@ -370,8 +370,9 @@ Resources:
               echo "export AWS_EFS=${ElasticFileSystem}" >> /etc/profile.d/vars.sh
               echo "export AWS_REGION=${AWS::Region}" >> /etc/profile.d/vars.sh
               echo "export AWS_STACK_NAME=${AWS::StackName}" >> /etc/profile.d/vars.sh
-              echo "export ANSIBLE_REPO=${AnsibleRepo}" ${AnsibleRepo} >> /etc/profile.d/vars.sh
-              ansible-pull -d /home/ec2-user/ansible -U http://ambrosio.dgcnect.eu/Horacio/ansible
+              echo "export ANSIBLE_REPO=${AnsibleRepo}" >> /etc/profile.d/vars.sh
+              ansible-pull -d /home/ec2-user/ansible -U ${AnsibleRepo}
+              /opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackName} --resource WebAutoScalingGroup --region ${AWS::Region}
             - MysqlUsername: !Ref DatabaseMasterUsername
               MysqlPassword: !Ref DatabaseMasterPassword
               AnsibleRepo: !Ref AnsiblePullGitRepo
