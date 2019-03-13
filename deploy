@@ -22,12 +22,13 @@ DatabaseName="futurium" \
 PublicAlbAcmCertificate="" \
 AdminEmail="test@test.net" \
 AdminUsername="admin" \
-DatabaseMasterPassword="Admin123!" \
+DatabaseMasterPassword="thisismypass123" \
 AdminPassword="admin" \
-DatabaseMasterUsername="admin" \
+DatabaseMasterUsername="cnectdbadmin" \
 Directory="drupal" \
 DatabaseInstanceType="db.t2.small" \
 ElastiCacheNodeType="cache.t2.micro" \
+AnsiblePullGitRepo="http://ambrosio.dgcnect.eu/Horacio/ansible" \
 WebInstanceType="t2.small"
 echo "Done."
 
