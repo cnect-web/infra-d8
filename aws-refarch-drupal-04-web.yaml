@@ -358,8 +358,13 @@ Resources:
               yum-config-manager --enable epel
               # Update package list.
               yum update -y
-              # Install git and ansible.
-              yum install -y mysql git ansible jq
+              # Install awslogs, git, mysql, jq and ansible.
+              yum install -y awslogs mysql git ansible jq
+              # Change region on the awslogs config.
+              sed -i "s|^region.*|region = ${AWS::Region}|g" /etc/awslogs/awscli.conf
+              # Start awslogs and add to boot.
+              service awslogs start
+              chkconfig awslogs on
               # Mount the EFS filesystem.
               mkdir /shared
               mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /shared/
