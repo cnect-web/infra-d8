@@ -97,6 +97,14 @@ Conditions:
 
 Resources:
 
+  RDSDBClusterParameterGroup:
+    Type: AWS::RDS::DBClusterParameterGroup
+    Properties:
+      Family: "aurora5.6"
+      Description: "RDS Parameters"
+      Parameters:
+        max_allowed_packet: 1073741824
+
   DatabaseCluster:
     Type: AWS::RDS::DBCluster
     Properties:
@@ -104,6 +112,7 @@ Resources:
       DatabaseName: !Ref DatabaseName
       DBSubnetGroupName: !Ref DataSubnetGroup
       Engine: aurora
+      DBClusterParameterGroupName: !Ref RDSDBClusterParameterGroup
       MasterUsername: !Ref DatabaseMasterUsername
       MasterUserPassword: !Ref DatabaseMasterPassword
       Port: 3306
