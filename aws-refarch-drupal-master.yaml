@@ -411,6 +411,25 @@ Resources:
         Title:
           !Ref Title
       TemplateURL: https://s3.eu-west-3.amazonaws.com/cnct-cf-templates/aws-refarch-drupal-04-web.yaml
+  aux:
+    Condition: AvailableAWSRegion
+    DependsOn: [ newvpc, securitygroups ]
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        KeyName:
+          !Ref KeyName
+        AuxInstanceType:
+          !Ref WebInstanceType
+        AuxSecurityGroup:
+          !GetAtt [ securitygroups, Outputs.AuxSecurityGroup ]
+        PublicSubnet0:
+          !GetAtt [ newvpc, Outputs.PublicSubnet0 ]
+        PublicSubnet1:
+          !GetAtt [ newvpc, Outputs.PublicSubnet1 ]
+        PublicSubnet2:
+          !GetAtt [ newvpc, Outputs.PublicSubnet2 ]
+      TemplateURL: https://s3.eu-west-3.amazonaws.com/cnct-cf-templates/aws-refarch-drupal-05-aux.yaml
 
 Outputs:
 
