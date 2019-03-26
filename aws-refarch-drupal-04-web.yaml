@@ -13,6 +13,7 @@ Metadata:
         - KeyName
         - WebInstanceType
         - AnsiblePullGitRepo
+        - AnsibleVaultPassword
         - WebAsgMax
         - WebAsgMin
         - WebSecurityGroup
@@ -58,6 +59,8 @@ Metadata:
         default: Existing Key Pair
       AnsiblePullGitRepo:
         default: Ansible Playbook repository URL
+      AnsibleVaultPassword:
+        default: Ansible Vault password to decrypt sensible files
       PublicAlbTargetGroupArn:
         default: Public Alb Target Group Arn
       PublicAlbHostname:
@@ -129,6 +132,11 @@ Parameters:
   AnsiblePullGitRepo:
     AllowedPattern: ^([a-z\-\:\/\.A-Z0-9]*)$
     Description: A git repository containing an Ansible Playbook to configure the instances.
+    ConstraintDescription: Must contain only alphanumeric characters and be at least 8 characters.
+    Type: String
+  AnsibleVaultPassword:
+    AllowedPattern: ^([a-zA-Z0-9`~!#$%^&*()_+,\\-])*$
+    Description: Ansible Vault password to decrypt sensitive files
     ConstraintDescription: Must contain only alphanumeric characters and be at least 8 characters.
     Type: String
   PublicAlbTargetGroupArn:
@@ -400,6 +408,8 @@ Resources:
           Fn::Sub :
             - |
               #!/bin/bash -xe
+              # Prevent repo errors.
+              yum clean all
               # Enable EPEL repo
               yum-config-manager --enable epel
               # Update package list.
@@ -416,13 +426,17 @@ Resources:
               mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /shared/
               # Store vars for later use.
               echo "export ANSIBLE_REPO=${AnsibleRepo}" >> /etc/profile.d/vars.sh
-              ansible-pull -d /home/ec2-user/ansible -U ${AnsibleRepo} --extra-vars "mysql_host=${DatabaseClusterEndpointAddress} mysql_user=${MysqlUsername} mysql_pass=${MysqlPassword}"
+              runuser -l ec2-user -c 'echo ${AnsibleVaultPassword} > /home/ec2-user/.ansible_vault_password'
+              runuser -l ec2-user -c 'ansible-pull -d /home/ec2-user/ansible -U ${AnsibleRepo} --extra-vars "mysql_host=${DatabaseClusterEndpointAddress} mysql_user=${MysqlUsername} mysql_pass=${MysqlPassword}" --vault-password-file /home/ec2-user/.ansible_vault_password'
+              # Delete the ansible password file.
+              rm /home/ec2-user/.ansible_vault_password
               # Clear the logs.
               sed -i '/ansible-pull/d' /var/log/cloud-init-output.log
               /opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackName} --resource WebAutoScalingGroup --region ${AWS::Region}
             - MysqlUsername: !Ref DatabaseMasterUsername
               MysqlPassword: !Ref DatabaseMasterPassword
               AnsibleRepo: !Ref AnsiblePullGitRepo
+              AnsibleVaultPassword: !Ref AnsibleVaultPassword
 
 Outputs:
 

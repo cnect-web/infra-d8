@@ -60,6 +60,8 @@ Metadata:
         default: Use a Cache Cluster?
       AnsiblePullGitRepo:
         default: Ansible Playbook repository URL
+      AnsibleVaultPassword:
+        default: Ansible Vault password to decrypt sensitive files
       WebAsgMax:
         default: Web ASG Max
       WebAsgMin:
@@ -162,6 +164,11 @@ Parameters:
   AnsiblePullGitRepo:
     AllowedPattern: ^([a-z\-\:\/\.A-Z0-9]*)$
     Description: A git repository containing an Ansible Playbook to configure the instances.
+    ConstraintDescription: Must contain only alphanumeric characters and be at least 8 characters.
+    Type: String
+  AnsibleVaultPassword:
+    AllowedPattern: ^([a-zA-Z0-9`~!#$%^&*()_+,\\-])*$
+    Description: Ansible Vault password to decrypt sensitive files
     ConstraintDescription: Must contain only alphanumeric characters and be at least 8 characters.
     Type: String
   WebAsgMax:
@@ -382,6 +389,8 @@ Resources:
           !GetAtt [ publicalb, Outputs.SslCertificate ]
         AnsiblePullGitRepo:
           !Ref AnsiblePullGitRepo
+        AnsibleVaultPassword:
+          !Ref AnsibleVaultPassword
         WebAsgMax:
           !Ref WebAsgMax
         WebAsgMin:
