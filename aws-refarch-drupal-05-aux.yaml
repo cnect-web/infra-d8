@@ -1,0 +1,135 @@
+Description: Reference Architecture to host Drupal on AWS - Creates an Instance for SolR and Piwik.
+
+Metadata:
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Aux Parameters
+      Parameters:
+        - KeyName
+        - AuxInstanceType
+        - AuxSecurityGroup
+        - PublicSubnet0
+        - PublicSubnet1
+        - PublicSubnet2
+    ParameterLabels:
+      KeyName:
+        default: Existing Key Pair
+      AuxInstanceType:
+        default: t2.medium
+      AuxSecurityGroup:
+        default: Aux Security Group
+      PublicSubnet0:
+        default: PublicSubnet0
+      PublicSubnet1:
+        default: PublicSubnet1
+      PublicSubnet2:
+        default: PublicSubnet2
+
+Parameters:
+  KeyName:
+    AllowedPattern: ^([a-zA-Z0-9 @.`~!#$%^&*()_+,\\-])*$
+    ConstraintDescription: Must be letters (upper or lower), numbers, and special characters.
+    Description: Name of an EC2 KeyPair. Your bastion & Web instances will launch with this KeyPair.
+    Type: AWS::EC2::KeyPair::KeyName
+  AuxInstanceType:
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - m3.medium
+      - m3.large
+      - m3.xlarge
+      - m3.2xlarge
+      - r3.large
+      - r3.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+    ConstraintDescription: Must be a valid Amazon EC2 instance type.
+    Default: t2.medium
+    Description: The Amazon EC2 instance type for your auxiliary instance.
+    Type: String
+  AuxSecurityGroup:
+    Description: Select the aux security group.
+    Type: AWS::EC2::SecurityGroup::Id
+  PublicSubnet0:
+    Description: Select an existing public subnet for AZ 0.
+    Type: AWS::EC2::Subnet::Id
+  PublicSubnet1:
+    Description: Select an existing public subnet for AZ 1.
+    Type: AWS::EC2::Subnet::Id
+  PublicSubnet2:
+    Description: Select an existing public subnet for AZ 2.
+    Type: AWS::EC2::Subnet::Id
+
+Conditions:
+
+  MoreThan2AZ:
+    !Or [
+      !Equals [ !Ref 'AWS::Region', us-east-1 ],
+      !Equals [ !Ref 'AWS::Region', us-east-2 ],
+      !Equals [ !Ref 'AWS::Region', us-west-2 ],
+      !Equals [ !Ref 'AWS::Region', eu-west-1 ],
+      !Equals [ !Ref 'AWS::Region', sa-east-1 ],
+      !Equals [ !Ref 'AWS::Region', ap-northeast-1 ],
+      !Equals [ !Ref 'AWS::Region', ap-southeast-2 ]
+    ]
+
+Mappings:
+
+  RegionMap:
+    ap-northeast-1:
+      AMI: ami-00a5245b4816c38e6
+    ap-northeast-2:
+      AMI: ami-00dc207f8ba6dc919
+    ap-south-1:
+      AMI: ami-0ad42f4f66f6c1cc9
+    ap-southeast-1:
+      AMI: ami-05b3bcf7f311194b3
+    ap-southeast-2:
+      AMI: ami-02fd0b06f06d93dfc
+    ca-central-1:
+      AMI: ami-07423fb63ea0a0930
+    eu-central-1:
+      AMI: ami-0cfbf4f6db41068ac
+    eu-west-1:
+      AMI: ami-0e9e9ef99df496f2c
+    eu-west-2:
+      AMI: ami-01419b804382064e4
+    sa-east-1:
+      AMI: ami-05145e0b28ad
+    us-east-1:
+      AMI: ami-0080e4c5bc078760e
+    us-east-2:
+      AMI: ami-0cd3dfa4e37921605
+    us-west-1:
+      AMI: ami-0ec6517f6edbf8044
+    us-west-2:
+      AMI: ami-01e24be29428c15b2
+
+Resources:
+
+  AuxInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref AuxInstanceType
+      SubnetId: !Ref PublicSubnet0
+      SecurityGroupIds:
+      - !Ref AuxSecurityGroup
+      KeyName: !Ref KeyName
+      ImageId: !FindInMap [ RegionMap, !Ref 'AWS::Region', AMI ]
+      BlockDeviceMappings:
+      - DeviceName: "/dev/xvda"
+        Ebs:
+          VolumeSize: "10"
+      Tags:
+        - Key: Name
+          Value: !Join [ '', [ 'Auxiliary Tools / ', !Ref 'AWS::StackName' ] ]

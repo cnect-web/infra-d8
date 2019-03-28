@@ -90,7 +90,7 @@ Resources:
           ToPort: 80
           CidrIp: 0.0.0.0/0
       VpcId:
-        !Ref Vpc       
+        !Ref Vpc
 
   WebSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -112,6 +112,26 @@ Resources:
       VpcId:
         !Ref Vpc
 
+  AuxSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Auxiliary systems
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref BastionSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8983
+          ToPort: 8983
+          CidrIp: 0.0.0.0/0
+      VpcId:
+        !Ref Vpc
+
 Outputs:
   BastionSecurityGroup:
     Value: !Ref BastionSecurityGroup
@@ -125,3 +145,5 @@ Outputs:
     Value: !Ref PublicAlbSecurityGroup
   WebSecurityGroup:
     Value: !Ref WebSecurityGroup
+  AuxSecurityGroup:
+    Value: !Ref AuxSecurityGroup

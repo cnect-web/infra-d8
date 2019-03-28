@@ -1,7 +1,7 @@
 ---
 AWSTemplateFormatVersion: 2010-09-09
 
-Description: Reference Architecture to host Drupal on AWS - Creates bastion (desired:0; min:0; max:1) Auto Scaling group
+Description: Reference Architecture to host Drupal on AWS - Creates bastion (desired:1; min:0; max:1) Auto Scaling group
 
 Metadata:
 
@@ -61,33 +61,33 @@ Mappings:
 
   RegionMap:
     ap-northeast-1:
-      AMI: ami-56d4ad31
+      AMI: ami-00a5245b4816c38e6
     ap-northeast-2:
-      AMI: ami-dac312b4
+      AMI: ami-00dc207f8ba6dc919
     ap-south-1:
-      AMI: ami-f9daac96
+      AMI: ami-0ad42f4f66f6c1cc9
     ap-southeast-1:
-      AMI: ami-dc9339bf
+      AMI: ami-05b3bcf7f311194b3
     ap-southeast-2:
-      AMI: ami-1c47407f
+      AMI: ami-02fd0b06f06d93dfc
     ca-central-1:
-      AMI: ami-ebed508f
+      AMI: ami-07423fb63ea0a0930
     eu-central-1:
-      AMI: ami-af0fc0c0
+      AMI: ami-0cfbf4f6db41068ac
     eu-west-1:
-      AMI: ami-70edb016
+      AMI: ami-08935252a36e25f85
     eu-west-2:
-      AMI: ami-f1949e95
+      AMI: ami-01419b804382064e4
     sa-east-1:
-      AMI: ami-80086dec
+      AMI: ami-05145e0b28ad
     us-east-1:
-      AMI: ami-0b33d91d
+      AMI: ami-0080e4c5bc078760e
     us-east-2:
-      AMI: ami-c55673a0
+      AMI: ami-0cd3dfa4e37921605
     us-west-1:
-      AMI: ami-165a0876
+      AMI: ami-0ec6517f6edbf8044
     us-west-2:
-      AMI: ami-f173cc91
+      AMI: ami-01e24be29428c15b2
 
 Resources:
 
@@ -100,6 +100,7 @@ Resources:
       LaunchConfigurationName: !Ref BastionLaunchConfiguration
       MaxSize: 1
       MinSize: 0
+      DesiredCapacity: 1
       Tags:
         - Key: Name
           Value: !Join [ '', [ 'Bastion / ', !Ref 'AWS::StackName' ] ]
@@ -116,10 +117,16 @@ Resources:
       IamInstanceProfile: !Ref BastionInstanceProfile
       ImageId: !FindInMap [ RegionMap, !Ref 'AWS::Region', AMI ]
       InstanceMonitoring: true
-      InstanceType: t2.large
+      InstanceType: t2.micro
       KeyName: !Ref KeyName
       SecurityGroups:
         - !Ref BastionSecurityGroup
+      UserData:
+        "Fn::Base64":
+          !Sub |
+            #!/bin/bash -xe
+            yum install fail2ban -y
+            chkconfig fail2ban on
   BastionInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
