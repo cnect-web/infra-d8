@@ -25,7 +25,6 @@ Metadata:
         default: Web Tier Parameters
       Parameters:
         - PublicAlbAcmCertificate
-        - AnsiblePullGitRepo
         - WebInstanceType
         - WebAsgMax
         - WebAsgMin
@@ -39,6 +38,15 @@ Metadata:
         - Directory
         - DomainName
         - Locale
+    - Label:
+        default: Ansible
+      Parameters:
+        - AnsiblePullGitRepo
+        - AnsibleVaultPassword
+    - Label:
+        default: Environment
+      Parameters:
+        - EnvironmentType
     ParameterLabels:
       DatabaseInstanceType:
         default: DB Instance Class
@@ -61,7 +69,7 @@ Metadata:
       AnsiblePullGitRepo:
         default: Ansible Playbook repository URL
       AnsibleVaultPassword:
-        default: Ansible Vault password to decrypt sensitive files
+        default: Ansible Vault password
       WebAsgMax:
         default: Web ASG Max
       WebAsgMin:
@@ -82,6 +90,8 @@ Metadata:
         default: Site Domain
       Locale:
         default: Language Code
+      EnvironmentType:
+        default: Environment Type
 
 Parameters:
 
@@ -237,6 +247,14 @@ Parameters:
     Default: This is a new Drupal site on Amazon Web Services
     AllowedPattern: ^([a-zA-Z0-9])([a-zA-Z0-9 _-]*)([a-zA-Z0-9])$
     Description: The Drupal website title.
+    Type: String
+  EnvironmentType:
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+    Description: The type of environment this stack will be used for.
     Type: String
 
 Conditions:
@@ -419,6 +437,8 @@ Resources:
           !Ref Locale
         Title:
           !Ref Title
+        EnvironmentType:
+          !Ref EnvironmentType
       TemplateURL: https://s3.eu-west-3.amazonaws.com/cnct-cf-templates/aws-refarch-drupal-04-web.yaml
   aux:
     Condition: AvailableAWSRegion

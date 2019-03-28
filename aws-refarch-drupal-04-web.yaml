@@ -12,8 +12,6 @@ Metadata:
       Parameters:
         - KeyName
         - WebInstanceType
-        - AnsiblePullGitRepo
-        - AnsibleVaultPassword
         - WebAsgMax
         - WebAsgMin
         - WebSecurityGroup
@@ -44,6 +42,16 @@ Metadata:
         default: File System Parameters
       Parameters:
         - ElasticFileSystem
+    - Label:
+        default: Ansible
+      Parameters:
+        - AnsiblePullGitRepo
+        - AnsibleVaultPassword
+    - Label:
+        default: Environment Type
+      Parameters:
+        - EnvironmentType
+
     ParameterLabels:
       DatabaseClusterEndpointAddress:
         default: DB Cluster Endpoint Address
@@ -95,6 +103,8 @@ Metadata:
         default: Language Code
       Title:
         default: Site Title
+      EnvironmentType:
+        default: production
 
 Parameters:
 
@@ -230,6 +240,14 @@ Parameters:
   Title:
     AllowedPattern: ^([a-zA-Z0-9])([a-zA-Z0-9 _-]*)([a-zA-Z0-9])$
     Description: The Drupal website title.
+    Type: String
+  EnvironmentType:
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+    Description: The type of environment this stack will be used for.
     Type: String
 
 Conditions:
@@ -425,6 +443,7 @@ Resources:
               mkdir /shared
               mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /shared/
               # Store vars for later use.
+              echo "export ENVIRONMENT=${EnvironmentType}" >> /etc/profile.d/vars.sh
               echo "export ANSIBLE_REPO=${AnsibleRepo}" >> /etc/profile.d/vars.sh
               runuser -l ec2-user -c 'echo ${AnsibleVaultPassword} > /home/ec2-user/.ansible_vault_password'
               runuser -l ec2-user -c 'ansible-pull -d /home/ec2-user/ansible -U ${AnsibleRepo} --extra-vars "mysql_host=${DatabaseClusterEndpointAddress} mysql_user=${MysqlUsername} mysql_pass=${MysqlPassword}" --vault-password-file /home/ec2-user/.ansible_vault_password'
