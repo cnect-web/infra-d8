@@ -42,7 +42,7 @@ Parameters:
     Description: Select an existing database subnet for AZ 2.
     Type: AWS::EC2::Subnet::Id
   ElastiCacheClusterName:
-    AllowedPattern: ^([a-zA-Z0-9]*)$
+    AllowedPattern: ^([a-z\-A-Z0-9]*)$
     Description: The ElastiCache cluster name. Defaults to the Amazon RDS database name.
     Type: String
   ElastiCacheNodeType:
@@ -111,13 +111,13 @@ Resources:
         - Key: Name
           Value: !Join [ '', [ 'Drupal / ', !Ref 'AWS::StackName' ] ]
       VpcSecurityGroupIds:
-      - !Ref ElastiCacheSecurityGroup       
-  ElastiCacheSubnetGroup: 
+      - !Ref ElastiCacheSecurityGroup
+  ElastiCacheSubnetGroup:
     Type: AWS::ElastiCache::SubnetGroup
-    Properties: 
+    Properties:
       CacheSubnetGroupName: !Join [ '', [ !Ref ElastiCacheClusterName, SubnetGroup ] ]
       Description: ElastiCache Subnet Group for Drupal
-      SubnetIds: 
+      SubnetIds:
         !If [
           MoreThan2AZ,
           [ !Ref DataSubnet0, !Ref DataSubnet1, !Ref DataSubnet2 ],

@@ -318,7 +318,7 @@ Resources:
         DataSubnet2:
           !GetAtt [ newvpc, Outputs.DataSubnet2 ]
         ElastiCacheClusterName:
-          !Ref DatabaseName
+          !Join [ '', [ !Ref DatabaseName, '-', !Ref EnvironmentType ] ]
         ElastiCacheNodeType:
           !Ref ElastiCacheNodeType
         ElastiCacheSecurityGroup:
